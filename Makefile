@@ -21,7 +21,7 @@ mrproper: clean
 	rm -f server
 	rm -f sample
 
-install: lib
+install: all
 	mkdir -p /usr/local/include/netty++
 	install -D -m 666 *.h /usr/local/include/netty++
 	install -D -m 666 *.a /usr/local/lib
