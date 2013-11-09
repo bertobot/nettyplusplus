@@ -3,6 +3,8 @@
 
 #include "ChannelHandler.h"
 #include "Worker.h"
+#include "Exception.h"
+
 #include <MySocket/ServerSocket.h>
 #include <MyThread/thread.h>
 #include <vector>

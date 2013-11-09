@@ -21,7 +21,7 @@ void Worker::run() {
 			client = new Socket(server->accept() );
 
 			if (m_handler) {
-				m_handler->onStart();
+				m_handler->onStart(*client);
 
 				Select s;
 				s.setTimeout(1,0);
@@ -34,8 +34,18 @@ void Worker::run() {
 					if (list.size() > 0) {
 						m_handler->onMessageReceived(*client);
 					}
+
+                    // if shutdown called from 'outside'
+                    if (shutdownflag) {
+                        client->close();
+                        delete client;
+                        client = NULL;
+                        return;
+                    }
 				}
 			}
+
+            shutdownflag = m_handler->shutdownOnExit(*client);
 
 			client->close();
 		}
@@ -124,8 +134,6 @@ Worker::~Worker() {
 
     if (client)
         delete client;
-
-    if (server)
-        delete server;
 }
 /////////////////////////////////////////////////
+// vim: ts=4:sw=4:expandtab

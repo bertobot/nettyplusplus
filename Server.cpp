@@ -7,6 +7,26 @@ Server::Server(int port, int workers, ChannelHandler *handler) {
 	m_server = NULL;
 	m_backlog = 128;
 	m_numWorkers = workers;
+
+    // init server
+	m_server = new ServerSocket(m_port);
+
+	if (! m_server->isValid() ) {
+        std::stringstream ss;
+        ss << "Error creating socket: " << errno;
+        throw Exception(ss.str());
+	}
+
+	if (! m_server->isBound() ) {
+        std::stringstream ss;
+        ss << "Binding error: " << errno;
+        throw Exception(ss.str());
+	}
+
+	const int set = 1;
+	m_server->setOption(SOL_SOCKET, SO_REUSEADDR, set);
+	m_server->listen(m_backlog);
+
 }
 
 Server::~Server() {
@@ -19,24 +39,6 @@ Server::~Server() {
 }
 
 void Server::run() {
-	m_server = new ServerSocket(m_port);
-
-	if (! m_server->isValid() ) {
-		printf("problem creating socket: %d\n", errno);
-		//return 1;
-		return;
-	}
-
-	if (! m_server->isBound() ) {
-		printf("binding error: %s\n", strerror(errno) );
-		//exit(5);
-		return;
-	}
-
-	const int set = 1;
-	m_server->setOption(SOL_SOCKET, SO_REUSEADDR, set);
-	m_server->listen(m_backlog);
-
     for (int i = 0; i < m_numWorkers; i++) {
         Worker *newWorker = new Worker(m_server, m_handler);
 
@@ -61,6 +63,13 @@ void Server::run() {
 
 void Server::close() {
 	m_server->close();
+
+	for (int i = 0; i < m_numWorkers; i++) {
+		Worker *c = m_workers[i];
+		if (c)
+			c->stop();
+	}
+
 	delete m_server;
 	m_server = NULL;
 
@@ -71,3 +80,4 @@ ChannelHandler * Server::getChannelHandler() {
 	return m_handler;
 }
 
+// vim: ts=4:sw=4:expandtab

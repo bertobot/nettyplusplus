@@ -32,7 +32,14 @@ public:
 	/*
 		This method is called when a channel is newly accepted.
 	*/
-	virtual void onStart() { }
+	virtual void onStart(Channel &channel) { }
+
+	/*
+		This method is called when a channel is about to be closed.
+		If this method returns true, the listening thread in Server
+		will shutdown.  Returns false by default.
+	*/
+	virtual bool shutdownOnExit(Channel &channel) { return false; }
 };
 
 #endif
