@@ -6,6 +6,7 @@
 #include "Exception.h"
 
 #include <MySocket/ServerSocket.h>
+#include <MySocket/SelectSocket.h>
 #include <MyThread/thread.h>
 #include <vector>
 
@@ -23,7 +24,8 @@ public:
 
 	void run();
 
-	void close();
+    void stop();
+
 
 	ChannelHandler * getChannelHandler();
 
@@ -35,6 +37,8 @@ private:
 	int m_numWorkers;
 	int m_backlog;
 	ChannelHandler *m_handler;
+
+    bool m_done;
 
 };
 

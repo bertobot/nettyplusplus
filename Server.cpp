@@ -27,42 +27,56 @@ Server::Server(int port, int workers, ChannelHandler *handler) {
 	m_server->setOption(SOL_SOCKET, SO_REUSEADDR, set);
 	m_server->listen(m_backlog);
 
+    m_done = false;
+
+    for (unsigned int i = 0; i < m_numWorkers; i++)
+        m_workers.push_back(new Worker(handler) );
 }
 
 Server::~Server() {
-/*
-	close();
+	stop();
+
+    // finally, join all threads
+    for (int j = 0; j < m_numWorkers; j++) {
+        Worker *c = m_workers[j];
+        if (c) {
+            c->join();
+            delete c;
+            c = NULL;
+        }
+    }
 
 	m_handler = NULL;
 	m_server = NULL;
-*/
 }
 
 void Server::run() {
-    for (int i = 0; i < m_numWorkers; i++) {
-        Worker *newWorker = new Worker(m_server, m_handler);
 
-        newWorker->setWorkerId(i);
+    int workerNum = 0;
 
-        newWorker->start();
-        printf("started thread %d.\n", i);
+    SelectSocket serverSelect;
+    
+    serverSelect.setTimeout(60, 0);
 
-        m_workers.push_back(newWorker);
+    serverSelect.add(m_server->getSocketDescriptor() );
+    
+    while (! m_done) {
+
+        if (serverSelect.canRead().size() > 0) {
+			Socket client = m_server->accept();
+            
+            m_workers[workerNum]->addClient(client);
+            m_workers[workerNum]->start();
+
+            if (++workerNum >= m_numWorkers) workerNum = 0;
+        }
     }
-
-	// finally, join all threads
-	for (int j = 0; j < m_numWorkers; j++) {
-		Worker *c = m_workers[j];
-		if (c) {
-			c->join();
-			delete c;
-			c = NULL;
-		}
-	}
 }
 
-void Server::close() {
+void Server::stop() {
 	m_server->close();
+
+    m_done = true;
 
 	for (int i = 0; i < m_numWorkers; i++) {
 		Worker *c = m_workers[i];

@@ -1,86 +1,74 @@
 #include "Worker.h"
 /////////////////////////////////////////////////
-Worker::Worker(ServerSocket *server, ChannelHandler *handler) : thread() {
+Worker::Worker(ChannelHandler *handler) : thread() {
     // TODO: this should throw an exception if server is null.
 
-    shutdownflag = false;
-    this->server = server;
-    this->client = NULL;
-    
-	m_handler = handler;
+    mShutdownflag = false;
 
-    workerId = -1;
+	mHandler = handler;
+
+    mWorkerId = -1;
+
+    mSelect.setTimeout(3, 0);
+}
+/////////////////////////////////////////////////
+Worker::~Worker() {
+    close();
+
+    for (unsigned int i = 0; i < mClients.size(); i++) {
+        mClients[i]->close();
+        delete mClients[i];
+        mClients[i] = NULL;
+    }
 }
 /////////////////////////////////////////////////
 void Worker::run() {
-	// TODO: make ServerException
-	if (! server) throw Exception("server is null.");
+    
+    while (! mShutdownflag) {
+        std::cout << "worker start" << std::endl;
+        
+        if (mHandler) {
+            std::vector<Socket> ready = mSelect.canRead();
 
-	while (! shutdownflag) {
-		try {
-			client = new Socket(server->accept() );
+            for (unsigned int i = 0; i < ready.size(); i++) {
+                try {
+                    if (ready[i].isValid()) {
+                        mHandler->onMessageReceived(ready[i]);
 
-			if (m_handler) {
-				m_handler->onStart(*client);
-
-				Select s;
-				s.setTimeout(1,0);
-
-				s.add(client->getSocketDescriptor() );
-
-				while (client->isValid() ) {
-					std::vector<int> list = s.canRead();
-
-					if (list.size() > 0) {
-						m_handler->onMessageReceived(*client);
-					}
-
-                    // if shutdown called from 'outside'
-                    if (shutdownflag) {
-                        client->close();
-                        delete client;
-                        client = NULL;
-                        return;
+                        if (mHandler->shutdownOnExit(ready[i]) )
+                            mShutdownflag = true;
                     }
-				}
-			}
 
-            shutdownflag = m_handler->shutdownOnExit(*client);
+                    else {
+                        ready[i].close();
+                        mSelect.remove(ready[i]);
+                    }
+                }
+                catch(NIOException e) {
+                    mSelect.remove(ready[i]);
 
-			client->close();
-		}
+                    ready[i].close();
 
-		catch(...) {
-			printLocal("Worker::run exception");
-		}
-
-        // clean up
-
-		delete client;
-        client = NULL;
-
-		std::stringstream ss;
-		ss << "thread " << workerId << " finished.";
-		printLocal(ss.str() );
-	}
-
-	std::stringstream ss;
-	ss << "Worker " << workerId << " finished.";
-	printLocal(ss.str() );
+                    std::cout << "Safety exception caught in Netty/Worker." << std::endl;
+                }
+            }
+        }
+    }
 }
 /////////////////////////////////////////////////
 void Worker::stop() {
-    shutdownflag = true;
+    mShutdownflag = true;
 }
 /////////////////////////////////////////////////
 int Worker::close() {
 	int rc = -2;
-	if (client) {
-	    rc = client->close();
-    }
+
+	// TODO: close all client connections?
+
 	return rc;
 }
 /////////////////////////////////////////////////
+/*
 void Worker::printLocal(const std::string & str) {
     time_t seconds = time(NULL);
     std::cerr << seconds << " [threadserver] " << str << std::endl;
@@ -92,23 +80,23 @@ void Worker::printLocalAndRespond(const std::string & str) {
 }
 /////////////////////////////////////////////////
 void Worker::respond(const std::string &str) {
-    if (! client) {
+    if (! mClient) {
         // TODO: should this be an exception?
         
         printLocal("respond: client is null!\n");
         return;
     }
     
-    if (client->isValid() ) {
+    if (mClient->isValid() ) {
         // TODO: make this tunable
         Select s;
 
         s.setTimeout(10, 0);
-        s.add(client->getSocketDescriptor() );
+        s.add(mClient->getSocketDescriptor() );
 
         try {
             if (! s.canWrite().empty() )
-                client->write(str + "\r\n", MSG_NOSIGNAL);
+                mClient->write(str + "\r\n", MSG_NOSIGNAL);
             else
                 printLocal("error: couldn't write response.\n");
         }
@@ -120,20 +108,25 @@ void Worker::respond(const std::string &str) {
         printLocal("warning: was not able to send '" + str + "' because socket wasn't ready for writing.");
     }
 }
+*/
 /////////////////////////////////////////////////
 void Worker::setWorkerId(int id) {
-	workerId = id;
+	mWorkerId = id;
 }
 /////////////////////////////////////////////////
 int Worker::getWorkerId() const {
-	return workerId;
+	return mWorkerId;
 }
 /////////////////////////////////////////////////
-Worker::~Worker() {
-    close();
 
-    if (client)
-        delete client;
+void Worker::addClient(Socket &client)
+{
+    //mClients.push_back(client);
+
+    mSelect.add(client);
+
+    mHandler->onStart(client);
 }
-/////////////////////////////////////////////////
+
+
 // vim: ts=4:sw=4:expandtab

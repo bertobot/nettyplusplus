@@ -13,9 +13,9 @@ public:
 	virtual ~EchoChannelHandler() { }
 
 	void onMessageReceived(Channel &channel) {
-		std::string str = channel.readLine();
+        std::string str = channel.readLine();
 
-		channel.write(str + "\r\n");
+        channel.write(str + "\r\n");
 	}
 
 };
@@ -161,7 +161,8 @@ int main(int argc, char **argv) {
 
 	Server server(44000, 1, ech);
 
-	server.start();
+	//server.start();
+    server.run();
 
 	printf("started.\n");
 
