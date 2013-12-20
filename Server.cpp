@@ -29,8 +29,11 @@ Server::Server(int port, int workers, ChannelHandler *handler) {
 
     m_done = false;
 
-    for (unsigned int i = 0; i < m_numWorkers; i++)
-        m_workers.push_back(new Worker(handler) );
+    for (unsigned int i = 0; i < m_numWorkers; i++) {
+        Worker *w = new Worker(handler);
+        w->start();
+        m_workers.push_back(w);
+    }
 }
 
 Server::~Server() {
@@ -66,7 +69,6 @@ void Server::run() {
 			Socket client = m_server->accept();
             
             m_workers[workerNum]->addClient(client);
-            m_workers[workerNum]->start();
 
             if (++workerNum >= m_numWorkers) workerNum = 0;
         }

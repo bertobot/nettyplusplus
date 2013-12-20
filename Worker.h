@@ -4,6 +4,7 @@
 #include "ChannelHandler.h"
 #include "Exception.h"
 #include <MyThread/thread.h>
+#include <MyThread/conditionVariable.h>
 #include <MySocket/SelectSocket.h>
 #include <MySocket/ServerSocket.h>
 #include <iostream>
@@ -20,8 +21,6 @@ public:
 
     void stop();
     
-    int close();
-
     void run();
 
 	/*
@@ -30,7 +29,7 @@ public:
     void printLocalAndRespond(const std::string&);
 	*/
 
-	void setWorkerId(int id);
+    void setWorkerId(int id);
 	int getWorkerId() const;
 
     void addClient(Socket &client);
@@ -45,6 +44,12 @@ private:
     std::vector<Socket *> mClients;
 
     SelectSocket mSelect;
+
+    mutex mLock;
+
+    conditionVariable mClientEmptyCV;
 };
 
 #endif
+
+// vim: ts=4:sw=4:expandtab

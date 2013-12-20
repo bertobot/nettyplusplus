@@ -1,8 +1,6 @@
 #include "Worker.h"
 /////////////////////////////////////////////////
 Worker::Worker(ChannelHandler *handler) : thread() {
-    // TODO: this should throw an exception if server is null.
-
     mShutdownflag = false;
 
 	mHandler = handler;
@@ -10,11 +8,11 @@ Worker::Worker(ChannelHandler *handler) : thread() {
     mWorkerId = -1;
 
     mSelect.setTimeout(3, 0);
+
+    mClientEmptyCV.assocMutex(&mLock);
 }
 /////////////////////////////////////////////////
 Worker::~Worker() {
-    close();
-
     for (unsigned int i = 0; i < mClients.size(); i++) {
         mClients[i]->close();
         delete mClients[i];
@@ -25,8 +23,12 @@ Worker::~Worker() {
 void Worker::run() {
     
     while (! mShutdownflag) {
-        std::cout << "worker start" << std::endl;
-        
+
+        mLock.lock();
+
+        while (mSelect.empty() )
+            mClientEmptyCV.wait();
+
         if (mHandler) {
             std::vector<Socket> ready = mSelect.canRead();
 
@@ -49,23 +51,18 @@ void Worker::run() {
 
                     ready[i].close();
 
+                    // TODO: log?
                     std::cout << "Safety exception caught in Netty/Worker." << std::endl;
                 }
             }
         }
+
+        mLock.unlock();
     }
 }
 /////////////////////////////////////////////////
 void Worker::stop() {
     mShutdownflag = true;
-}
-/////////////////////////////////////////////////
-int Worker::close() {
-	int rc = -2;
-
-	// TODO: close all client connections?
-
-	return rc;
 }
 /////////////////////////////////////////////////
 /*
@@ -126,6 +123,8 @@ void Worker::addClient(Socket &client)
     mSelect.add(client);
 
     mHandler->onStart(client);
+
+    mClientEmptyCV.signal();
 }
 
 
