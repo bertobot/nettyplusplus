@@ -34,6 +34,8 @@ public:
 
     void addClient(Socket &client);
 
+    bool shutdownCalled();
+
 private:
     bool mShutdownflag;
 

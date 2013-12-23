@@ -59,18 +59,32 @@ void Server::run() {
 
     SelectSocket serverSelect;
     
-    serverSelect.setTimeout(60, 0);
+    // TODO: make timeout tunable
+    serverSelect.setTimeout(1, 0);
 
     serverSelect.add(m_server->getSocketDescriptor() );
     
     while (! m_done) {
 
-        if (serverSelect.canRead().size() > 0) {
-			Socket client = m_server->accept();
-            
-            m_workers[workerNum]->addClient(client);
+        try {
+            if (serverSelect.canRead().size() > 0) {
+                Socket client = m_server->accept();
+                
+                m_workers[workerNum]->addClient(client);
 
-            if (++workerNum >= m_numWorkers) workerNum = 0;
+                if (++workerNum >= m_numWorkers) workerNum = 0;
+            }
+
+            // check if any of the workers called shutdown
+            for (unsigned int i = 0; i < m_numWorkers; i++) {
+                if (m_workers[i]->shutdownCalled() ) {
+                    m_done = true;
+                    break;
+                }
+            }
+        }
+        catch (NIOException &nio) {
+            printf("Server loop caught NIO Exception.");
         }
     }
 }

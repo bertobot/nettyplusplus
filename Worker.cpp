@@ -39,6 +39,10 @@ void Worker::run() {
 
                         if (mHandler->shutdownOnExit(ready[i]) )
                             mShutdownflag = true;
+
+                        if (! ready[i].isConnected() ) {
+                            mSelect.remove(ready[i]);
+                        }
                     }
 
                     else {
@@ -127,5 +131,8 @@ void Worker::addClient(Socket &client)
     mClientEmptyCV.signal();
 }
 
+bool Worker::shutdownCalled() {
+    return (mShutdownflag == true);
+}
 
 // vim: ts=4:sw=4:expandtab
