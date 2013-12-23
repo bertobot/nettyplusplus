@@ -84,7 +84,7 @@ void Server::run() {
             }
         }
         catch (NIOException &nio) {
-            printf("Server loop caught NIO Exception.");
+            printf("netty++ Server loop caught NIO Exception.");
         }
     }
 }

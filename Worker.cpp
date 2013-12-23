@@ -7,7 +7,8 @@ Worker::Worker(ChannelHandler *handler) : thread() {
 
     mWorkerId = -1;
 
-    mSelect.setTimeout(3, 0);
+    // TODO: make tunable?
+    mSelect.setTimeout(1, 0);
 
     mClientEmptyCV.assocMutex(&mLock);
 }
