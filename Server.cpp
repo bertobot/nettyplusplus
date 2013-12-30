@@ -102,8 +102,6 @@ void Server::stop() {
 
 	delete m_server;
 	m_server = NULL;
-
-	printf("goodbye.\n");
 }
 
 ChannelHandler * Server::getChannelHandler() {

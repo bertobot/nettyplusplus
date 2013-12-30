@@ -43,8 +43,6 @@ private:
     
     ChannelHandler *mHandler;
 
-    std::vector<Socket *> mClients;
-
     SelectSocket mSelect;
 
     mutex mLock;
