@@ -2,7 +2,7 @@ netty++
 
 C++ port of http://netty.io/
 
-Here
+Here's an example - an Echo Server, that uses the nett++ library:
 
 ```c++
 #include "Server.h"
@@ -90,9 +90,9 @@ int main(int argc, char **argv) {
 
                 break;
 
-	    case 'w':
-		opt_workers = atoi(optarg);
-		break;
+            case 'w':
+                opt_workers = atoi(optarg);
+                break;
 
             case 'p':
                 opt_port = atoi(optarg);
