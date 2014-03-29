@@ -2,7 +2,7 @@ netty++
 
 C++ port of http://netty.io/
 
-Here's an example - an Echo Server, that uses the nett++ library:
+Here's an example - an Echo Server, that uses the netty++ library:
 
 ```c++
 #include "Server.h"
