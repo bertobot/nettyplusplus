@@ -40,28 +40,9 @@ int main(int argc, char **argv) {
 
     while (1) {
         static struct option long_options[] = {
-            /* These options set a flag. */
 
-            /*
-            {"verbose", no_argument,       &verbose_flag, 1},
-            {"brief",   no_argument,       &verbose_flag, 0},
-            */
-
-            /* These options don't set a flag.  We distinguish them by their indices. */
-
-            /*
-            {"add",     no_argument,       0, 'a'},
-            {"append",  no_argument,       0, 'b'},
-            {"delete",  required_argument, 0, 'd'},
-            {"create",  required_argument, 0, 'c'},
-            {"file",    required_argument, 0, 'f'},
-            */
-
-            // max connections
-            {"connections", required_argument, 0,  'c'},
-
-            // daemon mode
-            {"daemon",      no_argument,        0,  'd'},
+            // workers
+            {"workers",     required_argument,  0,  'w'},
 
             // port
             {"port",        required_argument,  0,  'p'},
@@ -72,7 +53,7 @@ int main(int argc, char **argv) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "c:df:l:m:n:p:", long_options, &option_index);
+        c = getopt_long (argc, argv, "w:p:", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -99,7 +80,6 @@ int main(int argc, char **argv) {
                 break;
 
             default:
-                //abort ();
                 break;
         }
     }
@@ -112,7 +92,7 @@ int main(int argc, char **argv) {
 
     EchoChannelHandler *ech = new EchoChannelHandler();
 
-    // listen on opt_port, with opt_workers to process ech
+    // listen on opt_port, with opt_workers to process the Echo Channel Handler
     Server server(opt_port, opt_workers, ech);
 
     server.run();
