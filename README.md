@@ -64,10 +64,13 @@ int main(int argc, char **argv) {
                 /* If this option set a flag, do nothing else now. */
                 if (long_options[option_index].flag != 0)
                     break;
-                std::cout << "option " << long_options[option_index].name << std::endl;
+
+                std::cout << "option " << long_options[option_index].name
 
                 if (optarg)
-                    std::cout << " with arg " << optarg << std::endl;
+                    std::cout << " with arg " << optarg
+
+                std::cout << std::endl;
 
                 break;
 
