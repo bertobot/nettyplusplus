@@ -10,11 +10,14 @@ Worker::Worker(ChannelHandler *handler) : thread() {
     // TODO: make tunable?
     mSelect.setTimeout(1, 0);
 
-    mClientEmptyCV.assocMutex(&mLock);
+    mClientEmptyCV = new conditionVariable(&mLock);
 }
 /////////////////////////////////////////////////
 Worker::~Worker() {
     stop();
+
+    delete mClientEmptyCV;
+    mClientEmptyCV = NULL;
 }
 /////////////////////////////////////////////////
 void Worker::run() {
@@ -24,7 +27,7 @@ void Worker::run() {
         mLock.lock();
 
         while (mSelect.empty() ) {
-            mClientEmptyCV.wait();
+            mClientEmptyCV->wait();
             if (mShutdownflag) return;
         }
 
@@ -58,7 +61,7 @@ void Worker::run() {
 /////////////////////////////////////////////////
 void Worker::stop() {
     mShutdownflag = true;
-    mClientEmptyCV.signal();
+    mClientEmptyCV->signal();
 }
 /////////////////////////////////////////////////
 void Worker::setWorkerId(int id) {
@@ -76,7 +79,7 @@ void Worker::addClient(Socket &client)
 
     mHandler->onStart(client);
 
-    mClientEmptyCV.signal();
+    mClientEmptyCV->signal();
 }
 
 bool Worker::shutdownCalled() {

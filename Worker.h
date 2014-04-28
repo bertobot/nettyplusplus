@@ -47,7 +47,7 @@ private:
 
     mutex mLock;
 
-    conditionVariable mClientEmptyCV;
+    conditionVariable *mClientEmptyCV;
 };
 
 #endif
