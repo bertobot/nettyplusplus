@@ -1,5 +1,8 @@
 CC=g++ -g3 -ansi -Wall 
 OBJ=\
+Select.o \
+SelectSocket.o \
+SocketPool.o \
 Worker.o \
 Server.o 
 

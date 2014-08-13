@@ -1,6 +1,6 @@
 #include "Server.h"
 
-Server::Server(int port, int workers, ChannelHandler *handler) {
+Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy ts) {
 	m_handler = handler;
 	m_port = port;
 
@@ -25,12 +25,13 @@ Server::Server(int port, int workers, ChannelHandler *handler) {
 
 	const int set = 1;
 	m_server->setOption(SOL_SOCKET, SO_REUSEADDR, set);
+    //m_server->setLinger(true, 0);
 	m_server->listen(m_backlog);
 
     m_done = false;
 
-    for (unsigned int i = 0; i < m_numWorkers; i++) {
-        Worker *w = new Worker(handler);
+    for (int i = 0; i < m_numWorkers; i++) {
+        Worker *w = new Worker(handler, ts);
         w->start();
         m_workers.push_back(w);
     }
@@ -57,11 +58,8 @@ void Server::run() {
 
     int workerNum = 0;
 
-    SelectSocket serverSelect;
+    SelectSocket serverSelect(60, 0);
     
-    // TODO: make timeout tunable
-    serverSelect.setTimeout(1, 0);
-
     serverSelect.add(m_server->getSocketDescriptor() );
     
     while (! m_done) {
@@ -69,14 +67,28 @@ void Server::run() {
         try {
             if (serverSelect.canRead().size() > 0) {
                 Socket client = m_server->accept();
+
+                // set the client socket linger to 0.
+                //client.setLinger(true, 0);
                 
+                // debug
+                printf("Server::run add client: %d\n", client.getSocketDescriptor() );
+
+                if (! client.isValid() ) {
+                    printf("Server::run error accepting socket: %s\n", strerror(errno));
+                    continue;
+                }
+
                 m_workers[workerNum]->addClient(client);
+   
+                // debug
+                printf("Server::run added client: %d\n", client.getSocketDescriptor() );
 
                 if (++workerNum >= m_numWorkers) workerNum = 0;
             }
 
             // check if any of the workers called shutdown
-            for (unsigned int i = 0; i < m_numWorkers; i++) {
+            for (int i = 0; i < m_numWorkers; i++) {
                 if (m_workers[i]->shutdownCalled() ) {
                     m_done = true;
                     break;
@@ -106,6 +118,10 @@ void Server::stop() {
 
 ChannelHandler * Server::getChannelHandler() {
 	return m_handler;
+}
+
+void Server::setChannelHandler(ChannelHandler *handler) {
+    m_handler = handler;
 }
 
 // vim: ts=4:sw=4:expandtab

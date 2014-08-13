@@ -3,9 +3,10 @@
 
 #include "ChannelHandler.h"
 #include "Exception.h"
+#include "SelectSocket.h"
+
 #include <MyThread/thread.h>
 #include <MyThread/conditionVariable.h>
-#include <MySocket/SelectSocket.h>
 #include <MySocket/ServerSocket.h>
 #include <iostream>
 #include <sstream>
@@ -13,9 +14,14 @@
 #include <errno.h>
 #include <string.h>
 
+enum TimeoutStrategy {
+    KEEP,
+    DISCONNECT
+};
+
 class Worker : public thread {
 public:
-	Worker(ChannelHandler *handler);
+	Worker(ChannelHandler *handler, TimeoutStrategy ts=KEEP);
 
     virtual ~Worker();
 
@@ -23,16 +29,11 @@ public:
     
     void run();
 
-	/*
-    void printLocal(const std::string&);
-    void respond(const std::string&);
-    void printLocalAndRespond(const std::string&);
-	*/
-
     void setWorkerId(int id);
+
 	int getWorkerId() const;
 
-    void addClient(Socket &client);
+    void addClient(Channel &client);
 
     bool shutdownCalled();
 
@@ -48,6 +49,8 @@ private:
     mutex mLock;
 
     conditionVariable *mClientEmptyCV;
+
+    TimeoutStrategy mTimeoutStrategy;
 };
 
 #endif

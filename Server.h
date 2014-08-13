@@ -2,11 +2,11 @@
 #define __Server_h_
 
 #include "ChannelHandler.h"
-#include "Worker.h"
 #include "Exception.h"
+#include "SelectSocket.h"
+#include "Worker.h"
 
 #include <MySocket/ServerSocket.h>
-#include <MySocket/SelectSocket.h>
 #include <MyThread/thread.h>
 #include <vector>
 
@@ -19,7 +19,7 @@ Server(int port, int workers, ChannelHandler *handler);
 class Server : public thread {
 
 public:
-	Server(int port, int workers, ChannelHandler *handler = NULL);
+	Server(int port, int workers, ChannelHandler *handler = NULL, TimeoutStrategy ts = KEEP);
 	virtual ~Server();
 
 	void run();
@@ -28,6 +28,8 @@ public:
 
 
 	ChannelHandler * getChannelHandler();
+
+    void setChannelHandler(ChannelHandler *handler);
 
 private:
 	ServerSocket *m_server;

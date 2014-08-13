@@ -1,14 +1,16 @@
 #include "Worker.h"
 /////////////////////////////////////////////////
-Worker::Worker(ChannelHandler *handler) : thread() {
+Worker::Worker(ChannelHandler *handler, TimeoutStrategy ts) : thread() {
     mShutdownflag = false;
 
 	mHandler = handler;
 
     mWorkerId = -1;
 
+    mTimeoutStrategy = ts;
+
     // TODO: make tunable?
-    mSelect.setTimeout(1, 0);
+    mSelect.setTimeout(60, 0);
 
     mClientEmptyCV = new conditionVariable(&mLock);
 }
@@ -34,15 +36,23 @@ void Worker::run() {
         if (mHandler) {
             std::vector<Socket> ready = mSelect.canRead();
 
+            if (ready.empty() && mTimeoutStrategy == DISCONNECT) {
+                mSelect.clear();
+                continue;
+            }
+
             for (unsigned int i = 0; i < ready.size(); i++) {
                 try {
+                    if (! ready[i].isConnected() ) {
+                        mSelect.remove(ready[i]);
+                        continue;
+                    }
+
                     mHandler->onMessageReceived(ready[i]);
 
                     if (mHandler->shutdownOnExit(ready[i]) )
                         mShutdownflag = true;
 
-                    if (! ready[i].isConnected() )
-                        mSelect.remove(ready[i]);
                 }
                 catch(NIOException e) {
                     mSelect.remove(ready[i]);
@@ -73,7 +83,7 @@ int Worker::getWorkerId() const {
 }
 /////////////////////////////////////////////////
 
-void Worker::addClient(Socket &client)
+void Worker::addClient(Channel &client)
 {
     mSelect.add(client);
 
