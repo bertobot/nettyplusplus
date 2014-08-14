@@ -1,4 +1,4 @@
-CC=g++ -g3 -ansi -Wall 
+CC=g++ -g3 -ansi -Wall -std=c++0x 
 OBJ=\
 Select.o \
 SelectSocket.o \
