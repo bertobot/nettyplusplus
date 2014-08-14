@@ -10,7 +10,7 @@ Worker::Worker(ChannelHandler *handler, TimeoutStrategy ts) : thread() {
     mTimeoutStrategy = ts;
 
     // TODO: make tunable?
-    mSelect.setTimeout(60, 0);
+    mSelect.setTimeout(1, 0);
 
     mClientEmptyCV = new conditionVariable(&mLock);
 }
@@ -33,26 +33,37 @@ void Worker::run() {
             if (mShutdownflag) return;
         }
 
-        if (mHandler) {
-            std::vector<Socket> ready = mSelect.canRead();
+        std::vector<Socket> ready;
 
-            if (ready.empty() && mTimeoutStrategy == DISCONNECT) {
-                mSelect.clear();
+        if (mHandler) {
+            try {
+                ready = mSelect.canRead();
+
+                if (ready.empty() && mTimeoutStrategy == DISCONNECT) {
+                    mSelect.clear();
+                    mLock.unlock();
+                    continue;
+                }
+            }
+
+            catch(NIOException e) {
+                std::cout << "[Worker::run] canRead failed" << std::endl;
+                
+                mLock.unlock();
+
                 continue;
             }
 
             for (unsigned int i = 0; i < ready.size(); i++) {
                 try {
-                    if (! ready[i].isConnected() ) {
-                        mSelect.remove(ready[i]);
-                        continue;
-                    }
-
                     mHandler->onMessageReceived(ready[i]);
+
+                    // clean up if we closed in the method above
+                    if (! ready[i].isConnected() )
+                        mSelect.remove(ready[i]);
 
                     if (mHandler->shutdownOnExit(ready[i]) )
                         mShutdownflag = true;
-
                 }
                 catch(NIOException e) {
                     mSelect.remove(ready[i]);
