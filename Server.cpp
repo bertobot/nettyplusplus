@@ -72,7 +72,7 @@ void Server::run() {
                 //client.setLinger(true, 0);
                 
                 // debug
-                printf("Server::run add client: %d\n", client.getSocketDescriptor() );
+                printf("[Server::run] add client: %d\n", client.getSocketDescriptor() );
 
                 if (! client.isValid() ) {
                     printf("Server::run error accepting socket: %s\n", strerror(errno));
@@ -82,7 +82,7 @@ void Server::run() {
                 m_workers[workerNum]->addClient(client);
    
                 // debug
-                printf("Server::run added client: %d\n", client.getSocketDescriptor() );
+                printf("[Server::run] added client: %d\n", client.getSocketDescriptor() );
 
                 if (++workerNum >= m_numWorkers) workerNum = 0;
             }
