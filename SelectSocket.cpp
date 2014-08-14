@@ -73,3 +73,7 @@ void SelectSocket::clear() {
 	mSelect.clear();
 }
 
+std::vector<int> SelectSocket::getDescriptors() {
+	return mSelect.getDescriptors();
+}
+

@@ -23,6 +23,8 @@ public:
 
 	void clear();
 
+	std::vector<int> getDescriptors();
+
 private:
 	Select mSelect;
 
