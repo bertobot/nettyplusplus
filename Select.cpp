@@ -24,8 +24,9 @@ void Select::remove(int fd) {
 
     mLock.lock();
 
+    remove_fd(fd);
+
     if (fds.size() == 1 && fds[0] == fd) {
-        remove_fd(fds[0]);
         fds.pop_back();
         mLock.unlock();
         return;
@@ -34,15 +35,22 @@ void Select::remove(int fd) {
     int index = searchIndex(fd, 0, fds.size());
 
     if (fds[index] == fd) {
-        remove_fd(fds[index]);
-
         for (unsigned int i = index; i < fds.size() - 1; i++)
             fds[i] = fds[i+1]; 
 
         fds.pop_back();
     }
 
+    // debug
+    printf("[Select::remove] removed %d\n", fd);
+
     mLock.unlock();
+}
+
+void Select::add_fd(int fd) {
+    FD_SET(fd, &read_fds);
+    FD_SET(fd, &write_fds);
+    FD_SET(fd, &error_fds);
 }
 
 void Select::remove_fd(int fd) {
@@ -58,23 +66,15 @@ void Select::init() {
     FD_ZERO(&error_fds);
 }
 
-void Select::prepare() {
-	init();
-
-    for (unsigned int i = 0; i < fds.size(); i++) {
-        FD_SET(fds[i], &read_fds);
-        FD_SET(fds[i], &write_fds);
-        FD_SET(fds[i], &error_fds);
-    }
-}
-
 void Select::clear() {
     mLock.lock();
     fds.clear();
+    init();
     mLock.unlock();
 }
 
 std::vector<int> Select::canRead() {
+    // TODO: update canWrite and canReadWrite
     mLock.lock();
 
     std::vector<int> result;
@@ -83,41 +83,40 @@ std::vector<int> Select::canRead() {
     bzero(&lts, sizeof(lts));
 
     //lts = { sec, nsec };
-    lts = { 60, 0 };
+    lts = { 1, 0 };
 
     if (fds.size() == 0) {
-        printf("[d Select::canRead] fds is empty.  skipping.\n");
+        printf("[Select::canRead] fds is empty.  skipping.\n");
         mLock.unlock();
         return result;
     }
-
-    prepare();
 
     int nfds = fds[fds.size() - 1] + 1;
 
     // weird
     if (nfds < 1) {
-        printf("[d Select::canRead] nfds at impossible value: %d.  skipping.\n", nfds);
+        printf("[Select::canRead] nfds at impossible value: %d.  skipping.\n", nfds);
         
         mLock.unlock();
         return result;
     }
 
     // debug
-    printf("[d Select::canRead] nfds: %d, max: %d, fds: %d\n", nfds, fds[fds.size() - 1], fds.size());
-    printf("[d Select::canRead] { %ld, %ld }\n", lts.tv_sec, lts.tv_nsec);
+    printf("[Select::canRead] fds: [ ");
 
+    for (unsigned int i = 0; i < fds.size(); i++)
+        printf("%d ", fds[i]);
 
-    //int ready = pselect(nfds, &read_fds, &write_fds, &error_fds, &lts, NULL);
+    printf("], nfds: %d, lts = { %ld, %ld }\n", nfds, lts.tv_sec, lts.tv_nsec);
+
     int ready = pselect(nfds, &read_fds, NULL, &error_fds, &lts, NULL);
-
-    //printf("ready: %d\n", ready);
 
 	// TODO: 08.07.2014
 	// not sure if this should except anymore. capture the error.
 	
     if (ready == -1) {
 		printf("select error: (max: %d) %s\n", nfds - 1, strerror(errno));
+
         for (unsigned int i = 0; i < fds.size(); i++) {
             printf("%i ", fds[i]);
         }
@@ -126,24 +125,7 @@ std::vector<int> Select::canRead() {
 
         mLock.unlock();
 
-        if (errno == 9) {
-            printf("BADF detected.  safe reeturning.");
-            fds.clear();
-            return result;
-        }
-
 	    throw NIOException(strerror(errno));
-		return result;
-    }
-
-    // check fds for errors
-
-    for (unsigned int i = 0; i < fds.size(); i++) {
-        if (FD_ISSET(fds[i], &error_fds) ) {
-            printf("[Select::canRead] error in fd %d\n", fds[i]);
-            remove(fds[i]);
-            i--;
-        }
     }
 
     for (unsigned int i = 0; i < fds.size(); i++) {
@@ -167,8 +149,6 @@ std::vector<int> Select::canWrite() {
         mLock.unlock();
         return result;
     }
-
-    prepare();
 
     int nfds = fds[fds.size() - 1] + 1;
 
@@ -200,8 +180,6 @@ std::vector<int> Select::canReadWrite() {
         mLock.unlock();
         return result;
     }
-
-    prepare();
 
     int nfds = fds[fds.size() - 1] + 1;
 
@@ -258,14 +236,14 @@ bool Select::empty() {
 void Select::add(int fd) {
 
     if (fd < 0) {
-        printf("Select::add rejecting add of invalid fd: %d\n", fd);
+        printf("[Select::add] rejecting add of invalid fd: %d\n", fd);
         return;
     }
 
     mLock.lock();
 
     // debug, dups
-    printf("Select::add adding %d to [", fd);
+    printf("[Select::add] adding %d to [", fd);
 
     for (unsigned int i = 0; i < fds.size(); i++)
         printf(" %d", fds[i]);
@@ -278,7 +256,10 @@ void Select::add(int fd) {
 		int index = searchIndex(fd, 0, fds.size() );
 
         // TODO: no dups.  may need to change that behavior.
-        if (fd == fds[index]) return;
+        if (fd == fds[index]) {
+            printf("[Select::add] duplicate detected. skipping.\n");
+            return;
+        }
 
 		if (fd > fds[index]) index++;
 
@@ -289,6 +270,8 @@ void Select::add(int fd) {
 
 		fds[index] = fd;
 	}
+
+    add_fd(fd);
 
     mLock.unlock();
 

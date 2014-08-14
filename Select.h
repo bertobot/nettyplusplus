@@ -39,9 +39,9 @@ public:
     std::vector<int> getDescriptors();
 
 private:
-    void remove_fd(int);
+    void add_fd(int fd);
 
-    void prepare();
+    void remove_fd(int);
 
     void init();
 
