@@ -1,23 +1,16 @@
 #include "Select.h"
 
-Select::Select(long int sec, long int nsec) {
+Select::Select() {
     init();
-
-    this->sec = sec;
-    this->nsec = nsec;
+    debug = false;
 }
 
-Select::Select(const std::vector<int> &list, long int sec, long int nsec) {
+Select::Select(const std::vector<int> &list) {
     init();
-
-    this->sec = sec;
-    this->nsec = nsec;
+    debug = false;
 
     for (unsigned int i = 0; i < list.size(); i++)
         add(list[i]);
-}
-
-Select::~Select() {
 }
 
 void Select::remove(int fd) {
@@ -41,8 +34,7 @@ void Select::remove(int fd) {
         fds.pop_back();
     }
 
-    // debug
-    printf("[Select::remove] removed %d\n", fd);
+    if (debug) printf("[Select::remove] removed %d\n", fd);
 
     mLock.unlock();
 }
@@ -73,21 +65,15 @@ void Select::clear() {
     mLock.unlock();
 }
 
-std::vector<int> Select::canRead() {
-    // TODO: update canWrite and canReadWrite
+std::vector<int> Select::canRead(long int sec, long int usec) {
     mLock.lock();
 
     std::vector<int> result;
-    struct timespec lts;
 
-    bzero(&lts, sizeof(lts));
-
-    //lts = { sec, nsec };
-    lts = { 1, 0 };
+    struct timeval lts = { sec, usec };
 
     if (fds.size() == 0) {
-        printf("[Select::canRead] fds is empty.  skipping.\n");
-        mLock.unlock();
+        if (debug) printf("[Select::canRead] fds is empty.  skipping.\n");
         return result;
     }
 
@@ -95,43 +81,43 @@ std::vector<int> Select::canRead() {
 
     // weird
     if (nfds < 1) {
-        printf("[Select::canRead] nfds at impossible value: %d.  skipping.\n", nfds);
+        if (debug) printf("[Select::canRead] nfds at impossible value: %d.  skipping.\n", nfds);
         
-        mLock.unlock();
         return result;
     }
 
     // debug
-    printf("[Select::canRead] fds: [ ");
+    if (debug) {
+        printf("[Select::canRead] fds: [ ");
 
-    for (unsigned int i = 0; i < fds.size(); i++)
-        printf("%d ", fds[i]);
+        for (unsigned int i = 0; i < fds.size(); i++)
+            printf("%d ", fds[i]);
 
-    printf("], nfds: %d, lts = { %ld, %ld }\n", nfds, lts.tv_sec, lts.tv_nsec);
+        printf("], nfds: %d, lts = { %ld, %ld }\n", nfds, lts.tv_sec, lts.tv_usec);
+    }
 
-    int ready = pselect(nfds, &read_fds, NULL, &error_fds, &lts, NULL);
+    int ready = select(nfds, &read_fds, NULL, &error_fds, &lts);
 
 	// TODO: 08.07.2014
 	// not sure if this should except anymore. capture the error.
 	
     if (ready == -1) {
-		printf("select error: (max: %d) %s\n", nfds - 1, strerror(errno));
+		if (debug) {
+            printf("select error: (max: %d) %s\n", nfds - 1, strerror(errno));
 
-        for (unsigned int i = 0; i < fds.size(); i++) {
-            printf("%i ", fds[i]);
+            for (unsigned int i = 0; i < fds.size(); i++) {
+                printf("%i ", fds[i]);
+            }
+
+            printf("\n");
         }
-
-        printf("\n");
-
-        mLock.unlock();
 
 	    throw NIOException(strerror(errno));
     }
 
     for (unsigned int i = 0; i < fds.size(); i++) {
-        if (FD_ISSET(fds[i], &read_fds) ) {
+        if (FD_ISSET(fds[i], &read_fds) )
             result.push_back(fds[i]);
-        }
     }
 
     mLock.unlock();
@@ -139,25 +125,53 @@ std::vector<int> Select::canRead() {
     return result;
 }
 
-std::vector<int> Select::canWrite() {
+std::vector<int> Select::canWrite(long int sec, long int usec) {
     mLock.lock();
 
     std::vector<int> result;
-    struct timespec lts = { sec, nsec };
+
+    struct timeval lts = { sec, usec };
 
     if (fds.size() == 0) {
-        mLock.unlock();
+        if (debug) printf("[Select::canWrite] fds is empty.  skipping.\n");
         return result;
     }
 
     int nfds = fds[fds.size() - 1] + 1;
 
-    int ready = pselect(nfds, NULL, &write_fds, NULL, &lts, NULL);
+    // weird
+    if (nfds < 1) {
+        if (debug) printf("[Select::canWrite] nfds at impossible value: %d.  skipping.\n", nfds);
+        
+        return result;
+    }
 
+    if (debug) {
+        printf("[Select::canWrite] fds: [ ");
+
+        for (unsigned int i = 0; i < fds.size(); i++)
+            printf("%d ", fds[i]);
+
+        printf("], nfds: %d, lts = { %ld, %ld }\n", nfds, lts.tv_sec, lts.tv_usec);
+    }
+
+    int ready = select(nfds, NULL, &write_fds, &error_fds, &lts);
+
+	// TODO: 08.07.2014
+	// not sure if this should except anymore. capture the error.
+	
     if (ready == -1) {
-        printf("exception in Select: %s\n", strerror(errno) );
-        mLock.unlock();
-        throw NIOException(strerror(errno));
+        if (debug) {
+            printf("select error: (max: %d) %s\n", nfds - 1, strerror(errno));
+
+            for (unsigned int i = 0; i < fds.size(); i++) {
+                printf("%i ", fds[i]);
+            }
+
+            printf("\n");
+        }
+
+	    throw NIOException(strerror(errno));
     }
 
     for (unsigned int i = 0; i < fds.size(); i++) {
@@ -170,62 +184,11 @@ std::vector<int> Select::canWrite() {
     return result;
 }
 
-std::vector<int> Select::canReadWrite() {
-    mLock.lock();
-
-    std::vector<int> result;
-    struct timespec lts = { sec, nsec };
-
-    if (fds.size() == 0) {
-        mLock.unlock();
-        return result;
-    }
-
-    int nfds = fds[fds.size() - 1] + 1;
-
-    int ready = pselect(nfds, &read_fds, &write_fds, NULL, &lts, NULL);
-
-    if (ready == -1) {
-        mLock.unlock();
-        printf("exception in Select: %s\n", strerror(errno) );
-        throw NIOException(strerror(errno));
-    }
-
-    for (unsigned int i = 0; i < fds.size(); i++) {
-        if (FD_ISSET(fds[i], &read_fds) )
-            result.push_back(fds[i]);
-
-		else if (FD_ISSET(fds[i], &write_fds) )
-			result.push_back(fds[i]);
-    }
-
-    mLock.unlock();
-
-    return result;
-}
-
-void Select::wait() {
+void Select::wait(long int sec, long int usec) {
     int nfds = 0;
-    struct timespec lts = { sec, nsec };
+    struct timeval lts = { sec, usec };
 
-    pselect(nfds, NULL, NULL, NULL, &lts, NULL);
-}
-
-void Select::setTimeout(long int s, long int ns) {
-    sec = s;
-    nsec = ns;
-}
-
-void Select::setTimeout(double t) {
-    // first, get the base
-    long t1 = t / 1;
-    double t2 = (t / 1.0) - t1;
-
-    // 1 billion nanos = 1 second
-    long t3 = t2 * 1000000000;
-
-    sec = t1;
-    nsec = t3;
+    select(nfds, NULL, NULL, NULL, &lts);
 }
 
 bool Select::empty() {
@@ -236,19 +199,21 @@ bool Select::empty() {
 void Select::add(int fd) {
 
     if (fd < 0) {
-        printf("[Select::add] rejecting add of invalid fd: %d\n", fd);
+        if (debug) printf("[Select::add] rejecting add of invalid fd: %d\n", fd);
         return;
     }
 
     mLock.lock();
 
     // debug, dups
-    printf("[Select::add] adding %d to [", fd);
+    if (debug) {
+        printf("[Select::add] adding %d to [", fd);
 
-    for (unsigned int i = 0; i < fds.size(); i++)
-        printf(" %d", fds[i]);
+        for (unsigned int i = 0; i < fds.size(); i++)
+            printf(" %d", fds[i]);
 
-    printf(" ]\n");
+        printf(" ]\n");
+    }
 
 	if (fds.size() == 0) fds.push_back(fd);
 
@@ -257,7 +222,7 @@ void Select::add(int fd) {
 
         // TODO: no dups.  may need to change that behavior.
         if (fd == fds[index]) {
-            printf("[Select::add] duplicate detected. skipping.\n");
+            if (debug) printf("[Select::add] duplicate detected. skipping.\n");
             return;
         }
 

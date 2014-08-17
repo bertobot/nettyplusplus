@@ -27,6 +27,7 @@ Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy t
 	m_server->setOption(SOL_SOCKET, SO_REUSEADDR, set);
     //m_server->setLinger(true, 0);
 	m_server->listen(m_backlog);
+    m_server->makeNonBlocking();
 
     m_done = false;
 
@@ -35,6 +36,7 @@ Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy t
         w->start();
         m_workers.push_back(w);
     }
+
 }
 
 Server::~Server() {
@@ -58,14 +60,20 @@ void Server::run() {
 
     int workerNum = 0;
 
-    SelectSocket serverSelect(60, 0);
+    Select serverSelect;
+
+    // debug
+    serverSelect.debug = true;
     
+    // debug
+    printf("adding server descriptor to select: %d\n", m_server->getSocketDescriptor() );
+
     serverSelect.add(m_server->getSocketDescriptor() );
     
     while (! m_done) {
 
         try {
-            if (serverSelect.canRead().size() > 0) {
+            if (! serverSelect.canRead().empty() ) {
                 Socket client = m_server->accept();
 
                 // set the client socket linger to 0.
@@ -86,6 +94,11 @@ void Server::run() {
 
                 if (++workerNum >= m_numWorkers) workerNum = 0;
             }
+
+            // debug
+            else 
+                printf("[Server::run] canRead empty.\n");
+
 
             // check if any of the workers called shutdown
             for (int i = 0; i < m_numWorkers; i++) {

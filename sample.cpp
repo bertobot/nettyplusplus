@@ -1,4 +1,7 @@
 #include "Server.h"
+
+#include <MySocket/BufferedReader.h>
+
 #include <vector>
 
 #include <stdio.h>
@@ -13,9 +16,11 @@ public:
 	virtual ~EchoChannelHandler() { }
 
 	void onMessageReceived(Channel &channel) {
-        std::string str = channel.readLine();
+		BufferedReader bchannel(&channel);
 
-        channel.write(str + "\r\n");
+		std::string str = bchannel.readLine();
+
+		channel.write(str + "\r\n");
 	}
 
 };

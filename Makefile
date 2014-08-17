@@ -2,7 +2,6 @@ CC=g++ -g3 -ansi -Wall -std=c++0x
 OBJ=\
 Select.o \
 SelectSocket.o \
-SocketPool.o \
 Worker.o \
 Server.o 
 
@@ -28,4 +27,8 @@ install: all
 	mkdir -p /usr/local/include/netty++
 	install -D -m 666 *.h /usr/local/include/netty++
 	install -D -m 666 *.a /usr/local/lib
+
+uninstall:
+	rm -rf /usr/local/include/netty++
+	rm -rf /usr/local/lib/libnetty++.a
 

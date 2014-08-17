@@ -9,9 +9,6 @@ Worker::Worker(ChannelHandler *handler, TimeoutStrategy ts) : thread() {
 
     mTimeoutStrategy = ts;
 
-    // TODO: make tunable?
-    mSelect.setTimeout(1, 0);
-
     mClientEmptyCV = new conditionVariable(&mLock);
 }
 /////////////////////////////////////////////////
@@ -39,7 +36,10 @@ void Worker::run() {
             try {
                 ready = mSelect.canRead();
 
+                if (ready.empty() ) std::cout << "[Worker::run] canRead empty." << std::endl;
+
                 if (ready.empty() && mTimeoutStrategy == DISCONNECT) {
+                    std::cout << "nope!" << std::endl;
                     mSelect.clear();
                     mLock.unlock();
                     continue;

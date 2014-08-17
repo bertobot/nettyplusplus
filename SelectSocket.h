@@ -6,18 +6,14 @@
 
 class SelectSocket {
 public:
-    SelectSocket(long int sec = 1, long int usec = 0) : mSelect(sec, usec) {}
-    virtual ~SelectSocket() {}
+    SelectSocket() : mSelect() {}
+    ~SelectSocket() {}
 
-    std::vector<Socket> canRead();
-	std::vector<Socket> canWrite();
-	std::vector<Socket> canReadWrite();
+    std::vector<Socket> canRead(long int sec=1, long int nsec=0);
+	std::vector<Socket> canWrite(long int sec=1, long int nsec=0);
 
 	void add(const Socket &s);
 	void remove(const Socket &s);
-
-	void setTimeout(long int sec, long int nsec);
-	void setTimeout(double);
 
 	bool empty();
 

@@ -15,13 +15,13 @@
 
 class Select {
 public:
-    Select(long int sec=1, long int nsec=0);
-    Select(const std::vector<int>&, long int sec=1, long int nsec=0);
-    virtual ~Select();
+    Select();
+    Select(const std::vector<int>&);
+    ~Select() {}
 
-    std::vector<int> canRead();
-    std::vector<int> canWrite();
-    std::vector<int> canReadWrite();
+    std::vector<int> canRead(long int sec=1, long int usec=0);
+    std::vector<int> canWrite(long int sec=1, long int usec=0);
+    std::vector<int> canReadWrite(long int sec=1, long int usec=0);
     
     bool hasEventError();
 
@@ -29,14 +29,14 @@ public:
     void remove(int);
     void clear();
 
-    void wait();
-
-    void setTimeout(long sec, long nsec);
-    void setTimeout(double t);
+    void wait(long int sec, long int usec);
 
     bool empty();
 
     std::vector<int> getDescriptors();
+
+
+    bool debug;
 
 private:
     void add_fd(int fd);
@@ -51,8 +51,6 @@ private:
         read_fds,
         write_fds,
         error_fds;
-
-    long int sec, nsec;
 
     std::vector<int> fds;
 
