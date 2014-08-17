@@ -43,6 +43,8 @@ private:
 
     void remove_fd(int);
 
+    void reset_fds();
+
     void init();
 
     int searchIndex(int fd, int start, int end);
@@ -55,6 +57,8 @@ private:
     std::vector<int> fds;
 
     mutex mLock;
+
+    int max;
 
 };
 #endif

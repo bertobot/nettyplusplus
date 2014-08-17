@@ -15,6 +15,9 @@ Select::Select(const std::vector<int> &list) {
 
 void Select::remove(int fd) {
 
+    if (fds.empty() )
+        return;
+
     mLock.lock();
 
     remove_fd(fd);
@@ -33,6 +36,11 @@ void Select::remove(int fd) {
 
         fds.pop_back();
     }
+
+    if (fds.size() > 0)
+        max = fds[fds.size() - 1];
+    else
+        max = 0;
 
     if (debug) printf("[Select::remove] removed %d\n", fd);
 
@@ -56,6 +64,8 @@ void Select::init() {
     FD_ZERO(&read_fds);
     FD_ZERO(&write_fds);
     FD_ZERO(&error_fds);
+
+    max = 0;
 }
 
 void Select::clear() {
@@ -66,18 +76,18 @@ void Select::clear() {
 }
 
 std::vector<int> Select::canRead(long int sec, long int usec) {
-    mLock.lock();
-
     std::vector<int> result;
 
     struct timeval lts = { sec, usec };
+
+    reset_fds();
 
     if (fds.size() == 0) {
         if (debug) printf("[Select::canRead] fds is empty.  skipping.\n");
         return result;
     }
 
-    int nfds = fds[fds.size() - 1] + 1;
+    int nfds = max + 1;
 
     // weird
     if (nfds < 1) {
@@ -96,7 +106,8 @@ std::vector<int> Select::canRead(long int sec, long int usec) {
         printf("], nfds: %d, lts = { %ld, %ld }\n", nfds, lts.tv_sec, lts.tv_usec);
     }
 
-    int ready = select(nfds, &read_fds, NULL, &error_fds, &lts);
+    //int ready = select(nfds, &read_fds, NULL, &error_fds, &lts);
+    int ready = select(nfds, &read_fds, NULL, NULL, &lts);
 
 	// TODO: 08.07.2014
 	// not sure if this should except anymore. capture the error.
@@ -115,6 +126,8 @@ std::vector<int> Select::canRead(long int sec, long int usec) {
 	    throw NIOException(strerror(errno));
     }
 
+    mLock.lock();
+
     for (unsigned int i = 0; i < fds.size(); i++) {
         if (FD_ISSET(fds[i], &read_fds) )
             result.push_back(fds[i]);
@@ -126,18 +139,19 @@ std::vector<int> Select::canRead(long int sec, long int usec) {
 }
 
 std::vector<int> Select::canWrite(long int sec, long int usec) {
-    mLock.lock();
 
     std::vector<int> result;
 
     struct timeval lts = { sec, usec };
+
+    reset_fds();
 
     if (fds.size() == 0) {
         if (debug) printf("[Select::canWrite] fds is empty.  skipping.\n");
         return result;
     }
 
-    int nfds = fds[fds.size() - 1] + 1;
+    int nfds = max + 1;
 
     // weird
     if (nfds < 1) {
@@ -155,7 +169,8 @@ std::vector<int> Select::canWrite(long int sec, long int usec) {
         printf("], nfds: %d, lts = { %ld, %ld }\n", nfds, lts.tv_sec, lts.tv_usec);
     }
 
-    int ready = select(nfds, NULL, &write_fds, &error_fds, &lts);
+    //int ready = select(nfds, NULL, &write_fds, &error_fds, &lts);
+    int ready = select(nfds, NULL, &write_fds, NULL, &lts);
 
 	// TODO: 08.07.2014
 	// not sure if this should except anymore. capture the error.
@@ -173,6 +188,8 @@ std::vector<int> Select::canWrite(long int sec, long int usec) {
 
 	    throw NIOException(strerror(errno));
     }
+
+    mLock.lock();
 
     for (unsigned int i = 0; i < fds.size(); i++) {
         if (FD_ISSET(fds[i], &write_fds) )
@@ -238,6 +255,8 @@ void Select::add(int fd) {
 
     add_fd(fd);
 
+    max = fds[fds.size() - 1];
+
     mLock.unlock();
 
 }
@@ -257,6 +276,15 @@ int Select::searchIndex(int fd, int start, int end) {
 
 std::vector<int> Select::getDescriptors() {
     return fds;
+}
+
+void Select::reset_fds() {
+    mLock.lock();
+    
+    for (unsigned int i = 0; i < fds.size(); i++)
+        add_fd(fds[i]);
+
+    mLock.unlock();
 }
 
 // vim: ts=4:sw=4:expandtab
