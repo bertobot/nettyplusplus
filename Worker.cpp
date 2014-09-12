@@ -36,7 +36,7 @@ void Worker::run() {
             try {
                 ready = mSelect.canRead();
 
-                if (ready.empty() ) std::cout << "[Worker::run] canRead empty." << std::endl;
+                //if (ready.empty() ) std::cout << "[Worker::run] canRead empty." << std::endl;
 
                 if (ready.empty() && mTimeoutStrategy == DISCONNECT) {
                     std::cout << "nope!" << std::endl;

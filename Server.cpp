@@ -63,7 +63,7 @@ void Server::run() {
     Select serverSelect;
 
     // debug
-    serverSelect.debug = true;
+    //serverSelect.debug = true;
     
     // debug
     printf("adding server descriptor to select: %d\n", m_server->getSocketDescriptor() );
@@ -80,7 +80,7 @@ void Server::run() {
                 //client.setLinger(true, 0);
                 
                 // debug
-                printf("[Server::run] add client: %d\n", client.getSocketDescriptor() );
+                //printf("[Server::run] add client: %d\n", client.getSocketDescriptor() );
 
                 if (! client.isValid() ) {
                     printf("Server::run error accepting socket: %s\n", strerror(errno));
@@ -90,14 +90,14 @@ void Server::run() {
                 m_workers[workerNum]->addClient(client);
    
                 // debug
-                printf("[Server::run] added client: %d\n", client.getSocketDescriptor() );
+                //printf("[Server::run] added client: %d\n", client.getSocketDescriptor() );
 
                 if (++workerNum >= m_numWorkers) workerNum = 0;
             }
 
             // debug
-            else 
-                printf("[Server::run] canRead empty.\n");
+            //else 
+            //    printf("[Server::run] canRead empty.\n");
 
 
             // check if any of the workers called shutdown
