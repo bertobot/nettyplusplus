@@ -32,62 +32,7 @@ public:
 
 int main(int argc, char **argv) {
     int opt_port = 33000;
-    int opt_workers = 1;
-
-    int c;
-
-    // getopt
-
-    while (1) {
-        static struct option long_options[] = {
-
-            // workers
-            {"workers",     required_argument,  0,  'w'},
-
-            // port
-            {"port",        required_argument,  0,  'p'},
-
-            {0, 0, 0, 0}
-        };
-
-        /* getopt_long stores the option index here. */
-        int option_index = 0;
-
-        c = getopt_long (argc, argv, "w:p:", long_options, &option_index);
-
-        /* Detect the end of the options. */
-        if (c == -1)
-            break;
-
-        switch (c) {
-            case 0:
-                /* If this option set a flag, do nothing else now. */
-                if (long_options[option_index].flag != 0)
-                    break;
-
-                std::cout << "option " << long_options[option_index].name
-
-                if (optarg)
-                    std::cout << " with arg " << optarg
-
-                std::cout << std::endl;
-
-                break;
-
-            case 'w':
-                opt_workers = atoi(optarg);
-                break;
-
-            case 'p':
-                opt_port = atoi(optarg);
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    // end getopt
+    int opt_workers = 4;
 
     // signal catcher first!
     (void) signal(SIGINT,signal_cleanup);
