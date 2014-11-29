@@ -40,6 +40,11 @@ public:
 		will shutdown.  Returns false by default.
 	*/
 	virtual bool shutdownOnExit(Channel &channel) { return false; }
+
+	/*
+		This method is called when (and only when) the Worker select expires and no socket was ready.
+	*/
+	virtual void onIdle() { }
 };
 
 #endif

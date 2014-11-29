@@ -72,8 +72,15 @@ void Worker::run() {
 
                     // TODO: log?
                     std::cout << "Safety exception caught in Netty/Worker." << std::endl;
+
+                    mSelect.removeStale();
                 }
             }
+
+            /*
+            if (ready.size() == 0)
+                mHandler->onIdle();
+            */
         }
 
         mLock.unlock();

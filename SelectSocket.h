@@ -21,6 +21,8 @@ public:
 
 	std::vector<int> getDescriptors();
 
+	int removeStale();
+
 private:
 	Select mSelect;
 

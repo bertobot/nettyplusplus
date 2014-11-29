@@ -35,6 +35,10 @@ public:
 
     std::vector<int> getDescriptors();
 
+    // returns the number of stale descriptors cleared.
+    int removeStale();
+
+
 
     bool debug;
 

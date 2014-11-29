@@ -278,6 +278,34 @@ std::vector<int> Select::getDescriptors() {
     return fds;
 }
 
+int Select::removeStale() {
+    int result = 0;
+
+    printf("Select::removeStale\n"); // debug
+
+    mLock.lock();
+
+    for (unsigned int i = 0; i < fds.size(); i++) {
+        if (fds[i] < 0 || fds[i] > 65535) {
+            printf("%d ", fds[i]);  // debug
+
+            result++;
+
+            // slide everybody down one.
+            for (unsigned int j = i; j < fds.size() - 1; j++)
+                fds[j] = fds[j+1];
+
+            fds.pop_back();
+        }
+    }
+            
+    mLock.unlock();
+
+    printf("Select::removeStale - removed %d stale fds.\n", result);
+
+    return result;
+}
+
 void Select::reset_fds() {
     mLock.lock();
     

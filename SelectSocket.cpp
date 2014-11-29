@@ -43,3 +43,7 @@ std::vector<int> SelectSocket::getDescriptors() {
 	return mSelect.getDescriptors();
 }
 
+int SelectSocket::removeStale() {
+	return mSelect.removeStale();
+}
+
