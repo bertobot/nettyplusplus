@@ -1,12 +1,11 @@
 #ifndef __Worker_h_
 #define __Worker_h_
 
+#include "BlockingQueue.h"
 #include "ChannelHandler.h"
 #include "Exception.h"
-#include "SelectSocket.h"
 
 #include <MySocket/NIOException.h>
-#include <MySocket/ServerSocket.h>
 #include <MyThread/thread.h>
 #include <MyThread/conditionVariable.h>
 
@@ -23,7 +22,7 @@ enum TimeoutStrategy {
 
 class Worker : public thread {
 public:
-	Worker(ChannelHandler *handler, TimeoutStrategy ts=KEEP);
+	Worker(ChannelHandler *handler, BlockingQueue<Socket*> *readyQueue, TimeoutStrategy ts=KEEP);
 
     virtual ~Worker();
 
@@ -46,11 +45,7 @@ private:
     
     ChannelHandler *mHandler;
 
-    SelectSocket mSelect;
-
-    mutex mLock;
-
-    conditionVariable *mClientEmptyCV;
+    BlockingQueue<Socket*> *mReadyQueue;
 
     TimeoutStrategy mTimeoutStrategy;
 };

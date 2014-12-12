@@ -1,95 +1,49 @@
 #include "Worker.h"
 /////////////////////////////////////////////////
-Worker::Worker(ChannelHandler *handler, TimeoutStrategy ts) : thread() {
+Worker::Worker(ChannelHandler *handler, BlockingQueue<Socket*> *readyQueue, TimeoutStrategy ts) : thread() {
     mShutdownflag = false;
 
 	mHandler = handler;
 
+    mReadyQueue = readyQueue;
+
     mWorkerId = -1;
 
     mTimeoutStrategy = ts;
-
-    mClientEmptyCV = new conditionVariable(&mLock);
 }
 /////////////////////////////////////////////////
 Worker::~Worker() {
     stop();
 
-    delete mClientEmptyCV;
-    mClientEmptyCV = NULL;
+    mReadyQueue = NULL;
 }
 /////////////////////////////////////////////////
 void Worker::run() {
     
     while (! mShutdownflag) {
 
-        mLock.lock();
-
-        while (mSelect.empty() ) {
-            mClientEmptyCV->wait();
-            if (mShutdownflag) return;
-        }
-
-        std::vector<Socket> ready;
+        Socket *ready = mReadyQueue->pop();
 
         if (mHandler) {
             try {
-                ready = mSelect.canRead();
+                mHandler->onMessageReceived(*ready);
 
-                //if (ready.empty() ) std::cout << "[Worker::run] canRead empty." << std::endl;
-
-                if (ready.empty() && mTimeoutStrategy == DISCONNECT) {
-                    std::cout << "nope!" << std::endl;
-                    mSelect.clear();
-                    mLock.unlock();
-                    continue;
-                }
+                if (mHandler->shutdownOnExit(*ready) )
+                    mShutdownflag = true;
             }
-
             catch(NIOException e) {
-                std::cout << "[Worker::run] canRead failed" << std::endl;
-                
-                mLock.unlock();
 
-                continue;
+                // TODO: log?
+                std::cout << "Safety exception caught in Netty/Worker." << std::endl;
             }
-
-            for (unsigned int i = 0; i < ready.size(); i++) {
-                try {
-                    mHandler->onMessageReceived(ready[i]);
-
-                    // clean up if we closed in the method above
-                    if (! ready[i].isConnected() )
-                        mSelect.remove(ready[i]);
-
-                    if (mHandler->shutdownOnExit(ready[i]) )
-                        mShutdownflag = true;
-                }
-                catch(NIOException e) {
-                    mSelect.remove(ready[i]);
-
-                    ready[i].close();
-
-                    // TODO: log?
-                    std::cout << "Safety exception caught in Netty/Worker." << std::endl;
-
-                    mSelect.removeStale();
-                }
-            }
-
-            /*
-            if (ready.size() == 0)
-                mHandler->onIdle();
-            */
         }
 
-        mLock.unlock();
+        // NOTE: we don't delete/cleanup ready socket as that is handled by the SelectSocket object in Server.
     }
 }
 /////////////////////////////////////////////////
 void Worker::stop() {
     mShutdownflag = true;
-    mClientEmptyCV->signal();
 }
 /////////////////////////////////////////////////
 void Worker::setWorkerId(int id) {
@@ -100,16 +54,6 @@ int Worker::getWorkerId() const {
 	return mWorkerId;
 }
 /////////////////////////////////////////////////
-
-void Worker::addClient(Channel &client)
-{
-    mSelect.add(client);
-
-    mHandler->onStart(client);
-
-    mClientEmptyCV->signal();
-}
-
 bool Worker::shutdownCalled() {
     return (mShutdownflag == true);
 }
