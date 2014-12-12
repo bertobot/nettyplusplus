@@ -1,14 +1,17 @@
 #ifndef __Server_h_
 #define __Server_h_
 
+#include "BlockingQueue.h"
 #include "ChannelHandler.h"
 #include "Exception.h"
-#include "SelectSocket.h"
 #include "Worker.h"
 
 #include <MySocket/ServerSocket.h>
 #include <MyThread/thread.h>
 #include <vector>
+#include <map>
+
+#include <sys/epoll.h>
 
 /**
 
@@ -40,7 +43,17 @@ private:
 	int m_backlog;
 	ChannelHandler *m_handler;
 
+    BlockingQueue<Socket*> m_ready_sockets;
+
     bool m_done;
+
+
+    // epoll bits
+    int m_efd;
+
+    struct epoll_event m_ev;
+
+    int m_maxevents;
 
 };
 

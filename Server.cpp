@@ -5,8 +5,12 @@ Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy t
 	m_port = port;
 
 	m_server = NULL;
-	m_backlog = 128;
+	m_backlog = 512;
 	m_numWorkers = workers;
+
+    // TODO: make tunable
+    // 20k.
+    m_maxevents = 20000;
 
     // init server
 	m_server = new ServerSocket(m_port);
@@ -32,10 +36,26 @@ Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy t
     m_done = false;
 
     for (int i = 0; i < m_numWorkers; i++) {
-        Worker *w = new Worker(handler, ts);
+        Worker *w = new Worker(handler, &m_ready_sockets, ts);
         w->start();
         m_workers.push_back(w);
     }
+
+
+    // epoll bits
+
+    // we create the epoll fd and then attach the server's fd to the polling event.
+
+    m_efd = epoll_create(1);
+
+    if (m_efd == -1)
+        throw NIOException(strerror(errno));
+
+    m_ev.events = EPOLLIN;
+    m_ev.data.fd = m_server->getSocketDescriptor();
+
+    if (epoll_ctl(m_efd, EPOLL_CTL_ADD, m_server->getSocketDescriptor(), &m_ev) )
+        throw NIOException(strerror(errno));
 
 }
 
@@ -58,60 +78,89 @@ Server::~Server() {
 
 void Server::run() {
 
-    int workerNum = 0;
+    std::map<int, Socket*> clients;
 
-    Select serverSelect;
+    struct epoll_event events[m_maxevents];
 
-    // debug
-    //serverSelect.debug = true;
-    
-    // debug
-    printf("adding server descriptor to select: %d\n", m_server->getSocketDescriptor() );
-
-    serverSelect.add(m_server->getSocketDescriptor() );
-    
     while (! m_done) {
 
-        try {
-            if (! serverSelect.canRead().empty() ) {
-                Socket client = m_server->accept();
+        // last param is timeout in millis
+        int nfds = epoll_wait(m_efd, events, m_maxevents, 1000);
 
-                // set the client socket linger to 0.
-                //client.setLinger(true, 0);
-                
-                // debug
-                //printf("[Server::run] add client: %d\n", client.getSocketDescriptor() );
+        if (nfds == -1) {
+            printf("error in server loop: %s\n", strerror(errno));
+            break;
+        }
 
-                if (! client.isValid() ) {
-                    printf("Server::run error accepting socket: %s\n", strerror(errno));
-                    continue;
-                }
+        for (int i = 0; i < nfds; i++) {
 
-                m_workers[workerNum]->addClient(client);
-   
-                // debug
-                //printf("[Server::run] added client: %d\n", client.getSocketDescriptor() );
+            // if the connection hung up, close and remove
 
-                if (++workerNum >= m_numWorkers) workerNum = 0;
+            if (events[i].events & EPOLLRDHUP || events[i].events & EPOLLERR) {
+
+                clients.erase(events[i].data.fd);
+
+                shutdown(events[i].data.fd, SHUT_RDWR);
+
+                close(events[i].data.fd);
             }
 
-            // debug
-            //else 
-            //    printf("[Server::run] canRead empty.\n");
+            // the ready socket is the server, we have a new connection
+
+            Socket *ready = new Socket(events[i].data.fd);
+
+            if (ready->getSocketDescriptor() == m_server->getSocketDescriptor() ) {
+                // add client socket
+
+                Socket *client = new Socket(m_server->accept() );
+
+                m_ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET | EPOLLERR;
+
+                m_ev.data.fd = client->getSocketDescriptor();
+
+                epoll_ctl(m_efd, EPOLL_CTL_ADD, client->getSocketDescriptor(), &m_ev);
+
+                clients[client->getSocketDescriptor()] = client;
+            }
+
+            // otherwise, add the ready socket to the work queue
+
+            else {
+
+                clients[ready->getSocketDescriptor()] = ready;
+
+                m_ready_sockets.push(ready);
+            }
+
+        }
 
 
-            // check if any of the workers called shutdown
-            for (int i = 0; i < m_numWorkers; i++) {
-                if (m_workers[i]->shutdownCalled() ) {
-                    m_done = true;
-                    break;
-                }
+        // check if any of the workers called shutdown
+        for (int i = 0; i < m_numWorkers; i++) {
+            if (m_workers[i]->shutdownCalled() ) {
+                m_done = true;
+                break;
             }
         }
-        catch (NIOException &nio) {
-            printf("netty++ Server loop caught NIO Exception.");
+
+
+    }
+
+    // client cleanup
+
+    std::map<int, Socket*>::iterator citr = clients.begin();
+
+    for (; citr != clients.end(); citr++) {
+        Socket *s = citr->second;
+
+        if (s) {
+            s->close();
+            delete s;
+            s = NULL;
         }
     }
+
+
 }
 
 void Server::stop() {
