@@ -1,7 +1,5 @@
 CC=g++ $(CFLAGS) -ansi -Wall -std=c++0x 
 OBJ=\
-Select.o \
-SelectSocket.o \
 Worker.o \
 Server.o 
 
