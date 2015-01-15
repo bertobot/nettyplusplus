@@ -7,7 +7,7 @@ all: $(OBJ)
 	ar rs libnetty++.a $(OBJ)
 
 sample: sample.o all
-	$(CC) -o sample sample.o $(OBJ) -lMyThread -lpthread -lSocket
+	$(CC) -o sample sample.o $(OBJ) -lMyThread -lpthread -lSocket -lstrmanip++
 
 .cpp.o:
 	$(CC) -c $<
