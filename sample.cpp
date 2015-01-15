@@ -1,7 +1,6 @@
 #include "Server.h"
 
-#include <MySocket/BufferedReader.h>
-
+#include <libstrmanip++/utils.h>
 #include <vector>
 
 #include <stdio.h>
@@ -15,12 +14,12 @@ public:
 
 	virtual ~EchoChannelHandler() { }
 
-	void onMessageReceived(Channel &channel) {
-		BufferedReader bchannel(&channel);
+	void onMessageReceived(Channel &channel, std::string &payload) {
+        SplitIterator splitter(payload);
 
-		std::string str = bchannel.readLine();
+		std::string str = splitter.readLine();
 
-		channel.write(str + "\r\n");
+		channel.write(str + " [echoed]\r\n");
 	}
 
 };

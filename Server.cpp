@@ -1,6 +1,8 @@
 #include "Server.h"
 
 Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy ts) {
+    debug = false;
+
 	m_handler = handler;
 	m_port = port;
 
@@ -41,12 +43,13 @@ Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy t
         m_workers.push_back(w);
     }
 
-
     // epoll bits
 
     // we create the epoll fd and then attach the server's fd to the polling event.
 
     m_efd = epoll_create(1);
+
+    if (debug) printf("efd: %d\n", m_efd);
 
     if (m_efd == -1)
         throw NIOException(strerror(errno));
@@ -89,51 +92,119 @@ void Server::run() {
 
         if (nfds == -1) {
             printf("error in server loop: %s\n", strerror(errno));
-            break;
+
+            if (errno == EINTR)
+                printf("signal interrupt occurred.  resuming.\n");
+
+            else
+                break;
         }
 
         for (int i = 0; i < nfds; i++) {
 
+            int rfd = events[i].data.fd;
+
             // if the connection hung up, close and remove
 
-            if (events[i].events & EPOLLRDHUP || events[i].events & EPOLLERR) {
+            if (events[i].events & EPOLLRDHUP || events[i].events & EPOLLHUP || events[i].events & EPOLLERR) {
 
-                clients.erase(events[i].data.fd);
+                if (debug) printf("server %d: %d hangup or error.\n", m_efd, rfd);
 
-                shutdown(events[i].data.fd, SHUT_RDWR);
+                epoll_ctl(m_efd, EPOLL_CTL_DEL, rfd, NULL);
 
-                close(events[i].data.fd);
+                if (clients[rfd])
+                    clients[rfd]->close();
+
+                clients.erase(rfd);
             }
 
             // the ready socket is the server, we have a new connection
 
-            Socket *ready = new Socket(events[i].data.fd);
-
-            if (ready->getSocketDescriptor() == m_server->getSocketDescriptor() ) {
+            else if (rfd == m_server->getSocketDescriptor() ) {
                 // add client socket
 
                 Socket *client = new Socket(m_server->accept() );
 
-                m_ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET | EPOLLERR;
+                client->makeNonBlocking();
+
+                if (debug) printf("server %d: %d client connect.\n", m_efd, client->getSocketDescriptor() );
+
+                m_ev.events = EPOLLIN | EPOLLRDHUP | EPOLLONESHOT;
 
                 m_ev.data.fd = client->getSocketDescriptor();
 
                 epoll_ctl(m_efd, EPOLL_CTL_ADD, client->getSocketDescriptor(), &m_ev);
 
+// if netty++ is built with preamble, can use preamble function
+#ifdef PREAMBLE
+                std::string preamble = m_handler->preamble();
+                if (preamble.empty() ) client->writeLine(preamble);
+#endif
+
                 clients[client->getSocketDescriptor()] = client;
+
             }
 
             // otherwise, add the ready socket to the work queue
 
-            else {
+            else if (events[i].events & EPOLLIN) {
 
-                clients[ready->getSocketDescriptor()] = ready;
+                if (debug) printf("server %d: %d client ready.\n", m_efd, rfd);
 
-                m_ready_sockets.push(ready);
+                // 128k buffer
+                int size = 8192;
+
+                char *rbuffer = new char[size + 1];
+
+                std::string payload;
+
+                int rsf = 0;
+
+                while (true) {
+                    bzero(rbuffer, size + 1);
+
+                    int rc = read(rfd, rbuffer, size);
+            
+                    if (rc > 0) {
+
+                        payload += rbuffer;
+
+                        rsf += rc;
+
+                        if (rc < size) break;
+                    }
+
+                    else if (rc == 0) {
+                        printf("Server::run eof reached.\n");
+                        break;
+                    }
+
+                    else if (rc == -1 && (errno == EWOULDBLOCK || errno == EAGAIN) ) {
+                        printf("Server::run eagain reached.  trying again.\n");
+                        //break;
+                    }
+
+                    else {
+                        // error of some kind
+                        if (debug) printf("Server::run error encountered while reading for fd: %d\n", rfd);
+                        break;
+                    }
+                }
+
+                if (debug) printf("Server::run payload '%s', length: %d\n", payload.c_str(), payload.length() );
+
+                m_ready_sockets.push(std::pair<Socket*, std::string>(clients[rfd], payload) );
+
+                // re-arm
+                m_ev.data.fd = rfd;
+                m_ev.events = EPOLLIN | EPOLLRDHUP | EPOLLONESHOT;
+                epoll_ctl(m_efd, EPOLL_CTL_MOD, rfd, &m_ev);
             }
-
+    
+            else {
+                if (debug) printf("server %d: %d reached unknown event state.\n", m_server->getSocketDescriptor(), rfd);
+            }
         }
-
 
         // check if any of the workers called shutdown
         for (int i = 0; i < m_numWorkers; i++) {
@@ -142,8 +213,6 @@ void Server::run() {
                 break;
             }
         }
-
-
     }
 
     // client cleanup
@@ -151,15 +220,12 @@ void Server::run() {
     std::map<int, Socket*>::iterator citr = clients.begin();
 
     for (; citr != clients.end(); citr++) {
-        Socket *s = citr->second;
 
-        if (s) {
-            s->close();
-            delete s;
-            s = NULL;
+        if (citr->second) {
+            citr->second->close();
+            delete citr->second;
         }
     }
-
 
 }
 

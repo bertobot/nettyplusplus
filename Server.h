@@ -29,10 +29,11 @@ public:
 
     void stop();
 
-
 	ChannelHandler * getChannelHandler();
 
     void setChannelHandler(ChannelHandler *handler);
+
+    bool debug;
 
 private:
 	ServerSocket *m_server;
@@ -43,7 +44,7 @@ private:
 	int m_backlog;
 	ChannelHandler *m_handler;
 
-    BlockingQueue<Socket*> m_ready_sockets;
+    BlockingQueue<std::pair<Socket*, std::string> > m_ready_sockets;
 
     bool m_done;
 

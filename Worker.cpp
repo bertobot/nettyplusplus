@@ -1,6 +1,6 @@
 #include "Worker.h"
 /////////////////////////////////////////////////
-Worker::Worker(ChannelHandler *handler, BlockingQueue<Socket*> *readyQueue, TimeoutStrategy ts) : thread() {
+Worker::Worker(ChannelHandler *handler, BlockingQueue<std::pair<Socket*, std::string> > *readyQueue, TimeoutStrategy ts) : thread() {
     mShutdownflag = false;
 
 	mHandler = handler;
@@ -22,13 +22,13 @@ void Worker::run() {
     
     while (! mShutdownflag) {
 
-        Socket *ready = mReadyQueue->pop();
+        std::pair<Socket*, std::string> p(mReadyQueue->pop());
 
         if (mHandler) {
             try {
-                mHandler->onMessageReceived(*ready);
+                mHandler->onMessageReceived(*p.first, p.second);
 
-                if (mHandler->shutdownOnExit(*ready) )
+                if (mHandler->shutdownOnExit(*p.first) )
                     mShutdownflag = true;
             }
             catch(NIOException e) {
@@ -37,8 +37,6 @@ void Worker::run() {
                 std::cout << "Safety exception caught in Netty/Worker." << std::endl;
             }
         }
-
-        // NOTE: we don't delete/cleanup ready socket as that is handled by the SelectSocket object in Server.
     }
 }
 /////////////////////////////////////////////////

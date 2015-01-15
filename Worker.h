@@ -22,7 +22,7 @@ enum TimeoutStrategy {
 
 class Worker : public thread {
 public:
-	Worker(ChannelHandler *handler, BlockingQueue<Socket*> *readyQueue, TimeoutStrategy ts=KEEP);
+	Worker(ChannelHandler *handler, BlockingQueue<std::pair<Socket*, std::string> > *readyQueue, TimeoutStrategy ts=KEEP);
 
     virtual ~Worker();
 
@@ -45,7 +45,7 @@ private:
     
     ChannelHandler *mHandler;
 
-    BlockingQueue<Socket*> *mReadyQueue;
+    BlockingQueue<std::pair<Socket*, std::string> > *mReadyQueue;
 
     TimeoutStrategy mTimeoutStrategy;
 };
