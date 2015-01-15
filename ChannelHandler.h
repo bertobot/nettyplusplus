@@ -22,7 +22,7 @@ public:
 	/*
 		This method handles message received on a channel.
 	*/
-	virtual void onMessageReceived(Channel &channel) { }
+	virtual void onMessageReceived(Channel &channel, std::string &payload) { }
 
 	/*
 		This method is called when an exception occurs on a channel.
@@ -32,7 +32,7 @@ public:
 	/*
 		This method is called when a channel is newly accepted.
 	*/
-	virtual void onStart(Channel &channel) { }
+	virtual std::string preamble() { return ""; }
 
 	/*
 		This method is called when a channel is about to be closed.
