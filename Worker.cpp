@@ -24,6 +24,12 @@ void Worker::run() {
 
         std::pair<Socket*, std::string> p(mReadyQueue->pop());
 
+        if (! p.first) {
+            // TODO: log
+            std::cout << "Worker thread received NULL channel.  Treating as poison pill.  Bye." << std::endl;
+            break;
+        }
+
         if (mHandler) {
             try {
                 mHandler->onMessageReceived(*p.first, p.second);

@@ -125,6 +125,11 @@ void Server::run() {
 
                 Socket *client = new Socket(m_server->accept() );
 
+                if (! client->isValid() ) {
+                    if (debug) printf("new client connection is invalid!\n");
+                    continue;
+                }
+
                 client->makeNonBlocking();
 
                 if (debug) printf("server %d: %d client connect.\n", m_efd, client->getSocketDescriptor() );
@@ -191,7 +196,7 @@ void Server::run() {
                     }
                 }
 
-                if (debug) printf("Server::run payload '%s', length: %d\n", payload.c_str(), payload.length() );
+                if (debug) printf("Server::run payload '%s', length: %lu\n", payload.c_str(), payload.length() );
 
                 m_ready_sockets.push(std::pair<Socket*, std::string>(clients[rfd], payload) );
 
@@ -234,10 +239,18 @@ void Server::stop() {
 
     m_done = true;
 
+    // send poison pill (null channel) which will tell the worker to stop.
+
+    /*
 	for (int i = 0; i < m_numWorkers; i++) {
 		Worker *c = m_workers[i];
 		if (c)
 			c->stop();
+	}
+    */
+
+	for (int i = 0; i < m_numWorkers; i++) {
+        m_ready_sockets.push(std::pair<Socket*, std::string>(NULL, "") );
 	}
 
 	delete m_server;
