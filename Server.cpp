@@ -10,6 +10,8 @@ Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy t
 	m_backlog = 512;
 	m_numWorkers = workers;
 
+    bzero(&m_ev, sizeof(m_ev));
+
     // TODO: make tunable
     // 20k.
     m_maxevents = 20000;
