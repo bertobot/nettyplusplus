@@ -78,9 +78,6 @@ Server::~Server() {
     }
 
 	m_handler = NULL;
-
-    if (m_server)
-        delete m_server;
 	m_server = NULL;
 }
 
