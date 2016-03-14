@@ -1,4 +1,6 @@
-CC=g++ $(CFLAGS) -ansi -Wall -std=c++0x 
+INCLUDE=-Icontrib
+LIB=-Lcontrib/MyThread -Lcontrib/MySocket -Lcontrib/libstrmanip++
+CC=g++ $(CFLAGS) -Wall -std=c++11
 OBJ=\
 Worker.o \
 Server.o 
@@ -7,10 +9,10 @@ all: $(OBJ)
 	ar rs libnetty++.a $(OBJ)
 
 sample: sample.o all
-	$(CC) -o sample sample.o $(OBJ) -lMyThread -lpthread -lSocket -lstrmanip++
+	$(CC) $(LIB) -o sample sample.o $(OBJ) -lMyThread -lpthread -lSocket -lstrmanip++
 
 .cpp.o:
-	$(CC) -c $<
+	$(CC) $(INCLUDE) -c $<
 
 clean:
 	rm -f *.o
