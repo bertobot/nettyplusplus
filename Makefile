@@ -1,5 +1,5 @@
-INCLUDE=-Icontrib
-LIB=-Lcontrib/MyThread -Lcontrib/MySocket -Lcontrib/libstrmanip++
+INCLUDE += -Icontrib
+LIB += -Lcontrib/MyThread -Lcontrib/MySocket -Lcontrib/libstrmanip++
 CC=g++ $(CFLAGS) -Wall -std=c++11
 OBJ=\
 Worker.o \
