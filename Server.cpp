@@ -243,18 +243,11 @@ void Server::stop() {
 
     // send poison pill (null channel) which will tell the worker to stop.
 
-    /*
-	for (int i = 0; i < m_numWorkers; i++) {
-		Worker *c = m_workers[i];
-		if (c)
-			c->stop();
-	}
-    */
-
-	for (int i = 0; i < m_numWorkers; i++) {
+	for (int i = 0; i < m_numWorkers; i++)
         m_ready_sockets.push(std::pair<Socket*, std::string>(NULL, "") );
-	}
 
+    // TODO: distinguish beteween stop and dtor.
+    // this method, once called, destroys server.
 	delete m_server;
 	m_server = NULL;
 }
