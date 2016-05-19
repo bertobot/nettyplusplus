@@ -15,6 +15,28 @@ public:
         mNotEmpty = new conditionVariable(&mLock);
     }
 
+    BlockingQueue(const BlockingQueue<T> &rhs) {
+        mSize = rhs.mSize;
+        mLock = rhs.mLock;
+
+        mNotEmpty = new conditionVariable(&mLock);
+    }
+
+    BlockingQueue<T> & operator=(const BlockingQueue<T> &rhs) {
+        if (&rhs == this)
+            return *this;
+
+        if (mNotEmpty)
+            delete mNotEmpty;
+
+        mSize = rhs.mSize;
+        mLock = rhs.mLock;
+
+        mNotEmpty = new conditionVariable(&mLock);
+
+        return *this;
+    }
+
     virtual ~BlockingQueue() {
         if (mNotEmpty) {
             delete mNotEmpty;

@@ -23,6 +23,9 @@ class Server : public thread {
 
 public:
 	Server(int port, int workers, ChannelHandler *handler = NULL, TimeoutStrategy ts = KEEP);
+    Server(const Server &rhs);
+    Server & operator=(const Server &rhs);
+
 	virtual ~Server();
 
 	void run();
@@ -55,6 +58,8 @@ private:
     struct epoll_event m_ev;
 
     int m_maxevents;
+
+    void copy(const Server &);
 
 };
 

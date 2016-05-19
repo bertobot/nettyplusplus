@@ -64,6 +64,43 @@ Server::Server(int port, int workers, ChannelHandler *handler, TimeoutStrategy t
 
 }
 
+Server::Server(const Server &rhs) {
+    copy(rhs);
+}
+
+Server & Server::operator=(const Server &rhs) {
+
+    if (&rhs == this)
+        return *this;
+
+    copy(rhs);
+
+    return *this;
+}
+
+void Server::copy(const Server &rhs) {
+    // m_server, m_workers and m_ready_sockets need deep copy
+
+    m_efd           = rhs.m_efd;
+    m_workers       = rhs.m_workers;
+    m_port          = rhs.m_port;
+    m_numWorkers    = rhs.m_numWorkers;
+    m_backlog       = rhs.m_backlog;
+    m_handler       = rhs.m_handler;
+    m_ready_sockets = rhs.m_ready_sockets;
+    m_done          = rhs.m_done;
+    m_ev            = rhs.m_ev;
+    m_maxevents     = rhs.m_maxevents;
+
+    m_ready_sockets = rhs.m_ready_sockets;
+
+    // deep copy
+    m_server = new ServerSocket(*rhs.m_server);
+    
+    for (auto w : rhs.m_workers)
+        m_workers.push_back(new Worker(*w));
+}
+
 Server::~Server() {
 	stop();
 
