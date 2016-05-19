@@ -128,6 +128,7 @@ void Server::run() {
                 Socket *client = new Socket(m_server->accept() );
 
                 if (! client->isValid() ) {
+                    delete client;
                     if (debug) printf("new client connection is invalid!\n");
                     continue;
                 }
