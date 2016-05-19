@@ -145,7 +145,7 @@ void Server::run() {
 // if netty++ is built with preamble, can use preamble function
 #ifdef PREAMBLE
                 std::string preamble = m_handler->preamble();
-                if (preamble.empty() ) client->writeLine(preamble);
+                if (!preamble.empty() ) client->writeLine(preamble);
 #endif
 
                 clients[client->getSocketDescriptor()] = client;
@@ -230,10 +230,11 @@ void Server::run() {
     std::map<int, Socket*>::iterator citr = clients.begin();
 
     for (; citr != clients.end(); citr++) {
+        Socket *c = citr->second;
 
-        if (citr->second) {
-            citr->second->close();
-            delete citr->second;
+        if (c) {
+            c->close();
+            delete c;
         }
     }
 
