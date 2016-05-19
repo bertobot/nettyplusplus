@@ -198,6 +198,9 @@ void Server::run() {
                     }
                 }
 
+                delete [] rbuffer;
+                rbuffer = NULL;
+
                 if (debug) printf("Server::run payload '%s', length: %lu\n", payload.c_str(), payload.length() );
 
                 m_ready_sockets.push(std::pair<Socket*, std::string>(clients[rfd], payload) );

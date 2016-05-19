@@ -170,6 +170,9 @@ int main(int argc, char **argv) {
 
 	printf("started.\n");
 
+    delete ech;
+    ech = NULL;
+
 	return 0;
 }
 /////////////////////////////////////////////////
