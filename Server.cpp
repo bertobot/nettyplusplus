@@ -151,8 +151,11 @@ void Server::run() {
 
                 epoll_ctl(m_efd, EPOLL_CTL_DEL, rfd, NULL);
 
-                if (clients[rfd])
+                if (clients[rfd]) {
                     clients[rfd]->close();
+                    delete clients[rfd];
+                    clients[rfd] = NULL;
+                }
 
                 clients.erase(rfd);
             }
@@ -273,6 +276,7 @@ void Server::run() {
         if (c) {
             c->close();
             delete c;
+            citr->second = NULL;
         }
     }
 
