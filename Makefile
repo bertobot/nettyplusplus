@@ -1,6 +1,6 @@
 INCLUDES += -Icontrib
 LIB += -Lcontrib/MyThread -Lcontrib/MySocket -Lcontrib/libstrmanip++
-CC=g++ $(CFLAGS) -Wall -std=c++11
+CC=g++ $(INCLUDES) $(CFLAGS) -Wall -std=c++11
 OBJ=\
 Worker.o \
 Server.o 
@@ -12,7 +12,7 @@ sample: sample.o all
 	$(CC) $(LIB) -o sample sample.o $(OBJ) -lMyThread -lpthread -lSocket -lstrmanip++
 
 .cpp.o:
-	$(CC) $(INCLUDES) -c $<
+	$(CC) -c $<
 
 clean:
 	rm -f *.o
