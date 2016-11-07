@@ -1,4 +1,4 @@
-INCLUDE += -Icontrib
+INCLUDES += -Icontrib
 LIB += -Lcontrib/MyThread -Lcontrib/MySocket -Lcontrib/libstrmanip++
 CC=g++ $(CFLAGS) -Wall -std=c++11
 OBJ=\
@@ -12,7 +12,7 @@ sample: sample.o all
 	$(CC) $(LIB) -o sample sample.o $(OBJ) -lMyThread -lpthread -lSocket -lstrmanip++
 
 .cpp.o:
-	$(CC) $(INCLUDE) -c $<
+	$(CC) $(INCLUDES) -c $<
 
 clean:
 	rm -f *.o
